@@ -7,6 +7,7 @@ def save_add_text(path,text,index):
     with open(path,"a+") as file:
         file.write(index +"\t" + text + "\t" + str(year) +"\t" + str(mon) +"\t" + str(day) + "\t" + "T" + "\n")
 
+# 将新的文本放置在text文件的末尾
 def read_new_text(path):
     count = 0
     data = []

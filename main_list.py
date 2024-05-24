@@ -6,6 +6,7 @@
 # 过了好久一直没开发
 # 2024/5/4 开发日志：
 # 2024/5/7 储存变量
+# 2024/5/24  初始化 tableview 
 import sys
 import datetime,time
 from PyQt5 import QtCore,QtWidgets,QtGui
@@ -39,9 +40,9 @@ class MyMainWindow(QMainWindow,Ui_MainWindow):
         self.setWindowOpacity(self.transparent)
         self.q = True
         # 存储list的路径
-        self.path = "F:\\python_list\\text_add.txt"
+        self.path = "F:\\tomato\\text_add.txt"
         # 更改字体
-        font_id = QFontDatabase.addApplicationFont('F:\\python_list\\res\\mo導taiwanゴシック.ttf')
+        font_id = QFontDatabase.addApplicationFont('F:\\tomato\\res\\mo導taiwanゴシック.ttf')
         font_family = QFontDatabase.applicationFontFamilies(font_id)[0]
         self.setFont(QFont(font_family))
         
@@ -99,12 +100,12 @@ class MyMainWindow(QMainWindow,Ui_MainWindow):
         self.text_save_pushbutton = text_button.RoundButton_2(self.tab)
         self.text_save_pushbutton.setGeometry(QtCore.QRect(400,490,30,30))
         self.text_save_pushbutton.clicked.connect(self.save_add_text)
-    #-----------------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------------------
         
         # tableweight 属性调整
 
         # 规定最多一次性只能在界面生成10个代办事件
-        self.col_= 2
+        self.col_= 3
         self.row_ = 10
         item = QtWidgets.QTableWidgetItem()
         self.tableWidget.setColumnCount(self.col_)
@@ -145,7 +146,9 @@ class MyMainWindow(QMainWindow,Ui_MainWindow):
         self.tableWidget.setFont(QFont(font_family)) # 添加stylesheet样式后需要重新指定字体样式
 
         # 点击事件，使得待办更加醒目
+        
         self.tableWidget.cellClicked.connect(self.show_text)
+        # self.tableWidget.cellClicked.connect(self.delete_text)
         
         # tablewidget初始化
         self.tableWidget_init()
@@ -170,9 +173,9 @@ class MyMainWindow(QMainWindow,Ui_MainWindow):
     def mousePressEvent(self, event):
         if event.button() == QtCore.Qt.LeftButton and self.isMaximized() == False:
             self.m_flag = True
-            self.m_Position = event.globalPos() - self.pos()  # 获取鼠标相对窗口的位置
+            self.m_Position = event.globalPos() - self.pos() # 获取鼠标相对窗口的位置
             event.accept()
-            self.setCursor(QtGui.QCursor(QtCore.Qt.OpenHandCursor))  # 更改鼠标图标
+            self.setCursor(QtGui.QCursor(QtCore.Qt.OpenHandCursor))# 更改鼠标图标
 
     def mouseMoveEvent(self, mouse_event):
         if QtCore.Qt.LeftButton and self.m_flag:
@@ -186,28 +189,49 @@ class MyMainWindow(QMainWindow,Ui_MainWindow):
     def small(self):
         self.showMinimized()
 
+# 点击文本更改tableview 字体颜色和大小
+    # def mousePressEvent(self, event):
+    #     row = self.tableWidget.currentRow()
+    #     col = self.tableWidget.currentColumn()
+        
+    #     self.show_text(self,row,col,event)
+    
     def show_text(self,row,col):
         item = self.tableWidget.item(row,col)
-        if item and QtCore.Qt.LeftButton and not self.text_show_flag[row]:
-            self.text_show_flag[row] = True
-            item.setForeground(QColor(250,0,0))
-            font = item.font()
-            font.setPointSize(14)  # 设置字体大小为14
-            item.setFont(font)
-            self.tableWidget.resizeColumnsToContents()
-        else:
-            if QtCore.Qt.LeftButton and self.text_show_flag[row]:
-                self.text_show_flag[row] = False
-                item.setForeground(QColor(Qt.black))
+        if col == 1:
+            if item and QtCore.Qt.RightButton and not self.text_show_flag[row]:
+                self.text_show_flag[row] = True
+                item.setForeground(QColor(250,0,0))
                 font = item.font()
-                font.setPointSize(10)  # 设置字体大小为10
+                font.setPointSize(14)  # 设置字体大小为14
                 item.setFont(font)
                 self.tableWidget.resizeColumnsToContents()
+            else:
+                if QtCore.Qt.RightButton and self.text_show_flag[row]:
+                    self.text_show_flag[row] = False
+                    item.setForeground(QColor(Qt.black))
+                    font = item.font()
+                    font.setPointSize(10)  # 设置字体大小为10
+                    item.setFont(font)
+                    self.tableWidget.resizeColumnsToContents()
+        
+        # 添加删除或结束当前任务的指令
+        # 将这个指令绑定在第一列上
+        if col == 0:
+            self.delete_text(row,col)
     
+    # 删除文本
+    def delete_text(self,row,col):
+        
+        print(1)
+
+
+# 添加文本功能实现
     def addtext(self):
+        col = 1
         text = self.textEdit.toPlainText()
         for i in range(self.row_):
-            item = self.tableWidget.item(i,0)
+            item = self.tableWidget.item(i,col)
             if item:
                 self.text_add_flag[i] = True
             else:
@@ -215,21 +239,24 @@ class MyMainWindow(QMainWindow,Ui_MainWindow):
         for i in range(len(self.text_add_flag)):
             if not(self.text_add_flag[i]):
                 item = QTableWidgetItem(text)
-                self.tableWidget.setItem(i,0,item)
+                self.tableWidget.setItem(i,col,item)
                 break
         self.textEdit.clear()
     
+    # 提交并保存文本
     def save_add_text(self):
         text = self.textEdit.toPlainText()
         if text != "":
             save_text.save_add_text(self.path,text,str(self.index))
             self.index += 1
     
-    # 初始化tableWidget
+ # 初始化tableWidget
     def tableWidget_init(self):
         with open(self.path,"r") as file:
             
-            data = file.readlines(-10)
+            data = file.readlines()
+            file.close()
+        # index 的初始化
         if data == []:
             self.index = 0
         else:
@@ -239,7 +266,25 @@ class MyMainWindow(QMainWindow,Ui_MainWindow):
                     break
             index = int(data[-1][0:i]) + 1
             self.index = index
-        print(data)
+        if len(data) >= 10:
+            data = data[-10:]
+        
+        # 初始化添加事件
+        # data 中的数据结构是 index + text +  str(year) + str(mon)  + str(day) +  "T" + "\n"
+        col = 1
+        for row in range(0,len(data)):
+            infor = data[row].split("\t")
+            text = infor[1]
+            self.text_add_flag[row] = True
+            item = QTableWidgetItem(text)
+            self.tableWidget.setItem(row,col,item)
+            
+
+        # print(self.index)
+        # print(data)
+        # print(1)
+
+        
 
 # 多窗口调用
 class text_add_window (QMainWindow,Ui_Add_text):
