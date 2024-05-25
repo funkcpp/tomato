@@ -7,6 +7,7 @@
 # 2024/5/4 开发日志：
 # 2024/5/7 储存变量
 # 2024/5/24  初始化 tableview 
+# 2024/5/25 新增完成待办功能以及删除待办功能
 import sys
 import datetime,time
 from PyQt5 import QtCore,QtWidgets,QtGui
@@ -104,9 +105,12 @@ class MyMainWindow(QMainWindow,Ui_MainWindow):
         
         # tableweight 属性调整
 
-        # 规定最多一次性只能在界面生成10个代办事件
-        self.col_= 3
-        self.row_ = 10
+        # tableweight 的默认值
+        self.col_= 3 # tablewidget初始列
+        self.row_ = 10 # tablewidget 初始行
+        self.init_size = 10 #文本一开始展示时的固定文字大小
+        self.change_size = 14 #文本高亮后改变的文字大小
+
         item = QtWidgets.QTableWidgetItem()
         self.tableWidget.setColumnCount(self.col_)
         self.tableWidget.setRowCount(self.row_)
@@ -116,6 +120,10 @@ class MyMainWindow(QMainWindow,Ui_MainWindow):
         # 生成行
         for i in range(self.row_):
             self.tableWidget.setVerticalHeaderItem(i, item)
+        # 初始化
+        for i in range(self.col_):
+            for j in range(self.row_):
+                self.tableWidget.setItem(j,i,QTableWidgetItem(""))
         
         # 对tableweight做出限制
         # 1.限制用户直接在tableweight上直接编译
@@ -133,9 +141,10 @@ class MyMainWindow(QMainWindow,Ui_MainWindow):
 
         # 增加tableWidget添加文本判断事件
         self.text_add_flag = [False for _ in range(self.row_)]
-
         # 增加点击事件
         self.text_show_flag = [False for _ in range(self.row_)]# 为了实现单击以后改变字体颜色功能
+        # 增加事件是否完成判断
+        self.text_done_flag = [False for _ in range(self.row_)]
         
         # 添加的文本
         self.text_add = []
@@ -147,7 +156,7 @@ class MyMainWindow(QMainWindow,Ui_MainWindow):
 
         # 点击事件，使得待办更加醒目
         
-        self.tableWidget.cellClicked.connect(self.show_text)
+        self.tableWidget.cellClicked.connect(self.click_cell)
         # self.tableWidget.cellClicked.connect(self.delete_text)
         
         # tablewidget初始化
@@ -189,61 +198,120 @@ class MyMainWindow(QMainWindow,Ui_MainWindow):
     def small(self):
         self.showMinimized()
 
-# 点击文本更改tableview 字体颜色和大小
-    # def mousePressEvent(self, event):
-    #     row = self.tableWidget.currentRow()
-    #     col = self.tableWidget.currentColumn()
-        
-    #     self.show_text(self,row,col,event)
-    
-    def show_text(self,row,col):
+    # 点击后更改cell中的文本字体大小
+    def change_text_size(self,item,nums):
+        font = item.font()
+        font.setPointSize(nums) 
+        item.setFont(font)
+
+    # 点击cell触发的事件，包括高亮，完成代办以及删除代办
+    def click_cell(self,row,col):
         item = self.tableWidget.item(row,col)
-        if col == 1:
-            if item and QtCore.Qt.RightButton and not self.text_show_flag[row]:
-                self.text_show_flag[row] = True
-                item.setForeground(QColor(250,0,0))
-                font = item.font()
-                font.setPointSize(14)  # 设置字体大小为14
-                item.setFont(font)
-                self.tableWidget.resizeColumnsToContents()
-            else:
-                if QtCore.Qt.RightButton and self.text_show_flag[row]:
-                    self.text_show_flag[row] = False
-                    item.setForeground(QColor(Qt.black))
-                    font = item.font()
-                    font.setPointSize(10)  # 设置字体大小为10
-                    item.setFont(font)
-                    self.tableWidget.resizeColumnsToContents()
+        if col == 1 and not(self.text_done_flag[row]):
+            # 点击文本显示高亮
+            self.show_text(row,col)
         
-        # 添加删除或结束当前任务的指令
-        # 将这个指令绑定在第一列上
-        if col == 0:
+        if col == 0 and self.text_add_flag[row]:
+            # 点击文本完成待办
+            self.done_text(row,col)
+        
+        if self.text_add_flag[row] and col == 2:
+            # 点击删除
             self.delete_text(row,col)
     
+    # 显示文本高亮
+    def show_text(self,row,col):
+        item = self.tableWidget.item(row,col)
+        if item and QtCore.Qt.RightButton and not (self.text_show_flag[row]):
+            self.text_show_flag[row] = True
+            item.setForeground(QColor(250,0,0))
+            
+            self.change_text_size(item,self.change_size)
+            
+            self.tableWidget.resizeColumnsToContents()
+        else:
+            if QtCore.Qt.RightButton and self.text_show_flag[row] :
+                self.text_show_flag[row] = False
+                item.setForeground(QColor(Qt.black))
+                
+                self.change_text_size(item,self.init_size)
+
+                self.tableWidget.resizeColumnsToContents()
+
+
     # 删除文本
+    def clear(self,row,col):
+        for i in range(col):
+            self.tableWidget.setItem(row,i,QTableWidgetItem(""))
+    
     def delete_text(self,row,col):
-        
+        self.clear(row,col+1)
+        self.text_add_flag[row] = False
+        print(self.text_add_flag)
         print(1)
+    
+# 完成代办事件
+    def done_text(self,row,col):
+        
+        item = self.tableWidget.item(row,1)
+        item_2 = self.tableWidget.item(row,0)
+        flag = self.text_done_flag[row]
+        if item_2 and item and not(flag) and QtCore.Qt.LeftButton:
+            self.text_done_flag[row] = True
+            item.setForeground(QColor(212,212,212))
+            
+            self.change_text_size(item,self.init_size)
+
+            item_2.setText("Y")
+            item_2.setForeground(QColor(125,125,255))
+
+            
+            self.tableWidget.resizeColumnsToContents()
+        else:
+            if item and flag and QtCore.Qt.LeftButton:
+                self.text_done_flag[row] = False
+                item.setForeground(QColor(Qt.black))
+                self.change_text_size(item,self.init_size)
+                
+                item_2.setText("N")
+                item_2.setForeground(QColor(212,212,212))
+                
+                self.tableWidget.resizeColumnsToContents()
+            
+
+        print(item)
 
 
 # 添加文本功能实现
     def addtext(self):
         col = 1
         text = self.textEdit.toPlainText()
-        for i in range(self.row_):
-            item = self.tableWidget.item(i,col)
-            if item:
-                self.text_add_flag[i] = True
-            else:
-                self.text_add_flag[i] = False
         for i in range(len(self.text_add_flag)):
             if not(self.text_add_flag[i]):
                 item = QTableWidgetItem(text)
-                self.tableWidget.setItem(i,col,item)
+                
+                item_2 = QTableWidgetItem("N")
+                item_2.setForeground(QColor(212,212,212))
+                
+                item_3 = QTableWidgetItem("C")
+                item_3.setForeground(QColor(0,106,106))
+                
+                self.change_text_size(item,self.init_size)
+                self.change_text_size(item_2,self.init_size)
+                self.change_text_size(item_3,self.init_size)
+
+
+                self.tableWidget.setItem(i,1,item)
+                self.tableWidget.setItem(i,0,item_2)
+                self.tableWidget.setItem(i,2,item_3)
+
+                self.text_add_flag[i] = True
+                self.tableWidget.resizeColumnsToContents()
                 break
         self.textEdit.clear()
+        print(self.text_add_flag)
     
-    # 提交并保存文本
+# 提交并保存文本
     def save_add_text(self):
         text = self.textEdit.toPlainText()
         if text != "":
@@ -277,7 +345,20 @@ class MyMainWindow(QMainWindow,Ui_MainWindow):
             text = infor[1]
             self.text_add_flag[row] = True
             item = QTableWidgetItem(text)
+            
+            item_2 = QTableWidgetItem("N")
+            item_2.setForeground(QColor(212,212,212))
+
+            item_3 = QTableWidgetItem("C")
+            item_3.setForeground(QColor(0,106,106))
+            
+            self.change_text_size(item,self.init_size)
+            self.change_text_size(item_2,self.init_size)
+            self.change_text_size(item_3,self.init_size)
+            
             self.tableWidget.setItem(row,col,item)
+            self.tableWidget.setItem(row,0,item_2)
+            self.tableWidget.setItem(row,2,item_3)
             
 
         # print(self.index)
